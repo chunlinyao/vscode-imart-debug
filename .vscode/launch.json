@@ -7,7 +7,7 @@
 			"request": "launch",
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
-				"${workspaceFolder}/sampleWorkspace"
+				"${workspaceFolder}/../imart/toyofuto"
 			],
 			"outFiles": [
 				"${workspaceFolder}/dist/ext/**/*.js"

@@ -13,14 +13,14 @@
 * Implement `setExpression` request. This enables a "Set Value" context menu action on watches.
 
 ## 0.46.1
-* Improved overall stepping behavior: mock debug now behaves like a real debugger: it breaks on a line before executing the line. Previously it was breaking while executing the line.
+* Improved overall stepping behavior: imart debug now behaves like a real debugger: it breaks on a line before executing the line. Previously it was breaking while executing the line.
 
 ## 0.46.0
 * Rewrite Variables; see Readme.md in sampleWorkspace 
 * Add support for Disassembly View, Instruction Stepping, and Instruction Breakpoints. Instruction breakpoints can be set in the Disassembly view.
 
 ## 0.45.8
-* Register Mock Debug as default debugger for markdown files
+* Register Imart Debug as default debugger for markdown files
 
 ## 0.45.7
 * Add support for data breakpoint access types (a big _Thank You_ to @yannickowow for the PR)
@@ -46,7 +46,7 @@
 * Add context menu action "Show as Hex" to integer variables in Variables view
 * Add new run option "namedPipeServer" for debug adapter in extension.ts
 * Use new extension API for passing the "noDebug" option to "vscode.debug.startDebugging"
-* Support to run Mock Debug in the browser/web worker
+* Support to run Imart Debug in the browser/web worker
 
 ## 0.42.2
 * Project hygiene: get rid of all warnings
@@ -120,7 +120,7 @@
 * Use 1.24.0 version of Debug Adapter Protocol and libraries.
 
 ## 0.22.0
-* Refactored the 'Mock Debugger' functionality into a separate class. This makes it more obvious how a debug adapter 'adapts' to a debugger or runtime.
+* Refactored the 'Imart Debugger' functionality into a separate class. This makes it more obvious how a debug adapter 'adapts' to a debugger or runtime.
 
 ## 0.21.0
 * Shows the source location of log output. A `log(any text)` in the input sends the text in parenthesis to the debug console.

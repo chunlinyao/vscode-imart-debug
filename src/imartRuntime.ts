@@ -57,9 +57,9 @@ export function timeout(ms: number) {
 }
 
 /**
- * A Mock runtime with minimal debugger functionality.
+ * A Imart runtime with minimal debugger functionality.
  */
-export class MockRuntime extends EventEmitter {
+export class ImartRuntime extends EventEmitter {
 
 	// the initial (and one and only) file we are 'debugging'
 	private _sourceFile: string = '';
@@ -191,7 +191,7 @@ export class MockRuntime extends EventEmitter {
 	}
 
 	/**
-	 * "Step into" for Mock debug means: go to next character
+	 * "Step into" for Imart debug means: go to next character
 	 */
 	public stepIn(targetId: number | undefined) {
 		if (typeof targetId === 'number') {
@@ -210,7 +210,7 @@ export class MockRuntime extends EventEmitter {
 	}
 
 	/**
-	 * "Step out" for Mock debug means: go to previous character
+	 * "Step out" for Imart debug means: go to previous character
 	 */
 	public stepOut() {
 		if (typeof this.currentColumn === 'number') {

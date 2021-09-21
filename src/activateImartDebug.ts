@@ -6,20 +6,20 @@
 
 import * as vscode from 'vscode';
 import { WorkspaceFolder, DebugConfiguration, ProviderResult, CancellationToken } from 'vscode';
-import { MockDebugSession } from './mockDebug';
-import { FileAccessor } from './mockRuntime';
+import { ImartDebugSession } from './imartDebug';
+import { FileAccessor } from './imartRuntime';
 
-export function activateMockDebug(context: vscode.ExtensionContext, factory?: vscode.DebugAdapterDescriptorFactory) {
+export function activateImartDebug(context: vscode.ExtensionContext, factory?: vscode.DebugAdapterDescriptorFactory) {
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('extension.mock-debug.runEditorContents', (resource: vscode.Uri) => {
+		vscode.commands.registerCommand('extension.imart-debug.runEditorContents', (resource: vscode.Uri) => {
 			let targetResource = resource;
 			if (!targetResource && vscode.window.activeTextEditor) {
 				targetResource = vscode.window.activeTextEditor.document.uri;
 			}
 			if (targetResource) {
 				vscode.debug.startDebugging(undefined, {
-						type: 'mock',
+						type: 'imart',
 						name: 'Run File',
 						request: 'launch',
 						program: targetResource.fsPath
@@ -28,60 +28,47 @@ export function activateMockDebug(context: vscode.ExtensionContext, factory?: vs
 				);
 			}
 		}),
-		vscode.commands.registerCommand('extension.mock-debug.debugEditorContents', (resource: vscode.Uri) => {
+		vscode.commands.registerCommand('extension.imart-debug.debugEditorContents', (resource: vscode.Uri) => {
 			let targetResource = resource;
 			if (!targetResource && vscode.window.activeTextEditor) {
 				targetResource = vscode.window.activeTextEditor.document.uri;
 			}
 			if (targetResource) {
 				vscode.debug.startDebugging(undefined, {
-					type: 'mock',
+					type: 'imart',
 					name: 'Debug File',
 					request: 'launch',
 					program: targetResource.fsPath,
 					stopOnEntry: true
 				});
 			}
-		}),
-		vscode.commands.registerCommand('extension.mock-debug.toggleFormatting', (variable) => {
-			const ds = vscode.debug.activeDebugSession;
-			if (ds) {
-				ds.customRequest('toggleFormatting');
-			}
 		})
 	);
 
-	context.subscriptions.push(vscode.commands.registerCommand('extension.mock-debug.getProgramName', config => {
-		return vscode.window.showInputBox({
-			placeHolder: "Please enter the name of a markdown file in the workspace folder",
-			value: "readme.md"
-		});
-	}));
+	// register a configuration provider for 'imart' debug type
+	const provider = new ImartConfigurationProvider();
+	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('imart', provider));
 
-	// register a configuration provider for 'mock' debug type
-	const provider = new MockConfigurationProvider();
-	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('mock', provider));
-
-	// register a dynamic configuration provider for 'mock' debug type
-	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('mock', {
+	// register a dynamic configuration provider for 'imart' debug type
+	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('imart', {
 		provideDebugConfigurations(folder: WorkspaceFolder | undefined): ProviderResult<DebugConfiguration[]> {
 			return [
 				{
 					name: "Dynamic Launch",
 					request: "launch",
-					type: "mock",
+					type: "imart",
 					program: "${file}"
 				},
 				{
 					name: "Another Dynamic Launch",
 					request: "launch",
-					type: "mock",
+					type: "imart",
 					program: "${file}"
 				},
 				{
-					name: "Mock Launch",
+					name: "Imart Launch",
 					request: "launch",
-					type: "mock",
+					type: "imart",
 					program: "${file}"
 				}
 			];
@@ -91,13 +78,13 @@ export function activateMockDebug(context: vscode.ExtensionContext, factory?: vs
 	if (!factory) {
 		factory = new InlineDebugAdapterFactory();
 	}
-	context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('mock', factory));
+	context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('imart', factory));
 	if ('dispose' in factory) {
 		context.subscriptions.push(factory);
 	}
 
 	// override VS Code's default implementation of the debug hover
-	// here we match only Mock "variables", that are words starting with an '$' 
+	// here we match only Imart "variables", that are words starting with an
 	context.subscriptions.push(vscode.languages.registerEvaluatableExpressionProvider('markdown', {
 		provideEvaluatableExpression(document: vscode.TextDocument, position: vscode.Position): vscode.ProviderResult<vscode.EvaluatableExpression> {
 
@@ -149,7 +136,7 @@ export function activateMockDebug(context: vscode.ExtensionContext, factory?: vs
 	}));
 }
 
-class MockConfigurationProvider implements vscode.DebugConfigurationProvider {
+class ImartConfigurationProvider implements vscode.DebugConfigurationProvider {
 
 	/**
 	 * Massage a debug configuration just before a debug session is being launched,
@@ -161,7 +148,7 @@ class MockConfigurationProvider implements vscode.DebugConfigurationProvider {
 		if (!config.type && !config.request && !config.name) {
 			const editor = vscode.window.activeTextEditor;
 			if (editor && editor.document.languageId === 'markdown') {
-				config.type = 'mock';
+				config.type = 'imart';
 				config.name = 'Launch';
 				config.request = 'launch';
 				config.program = '${file}';
@@ -202,6 +189,6 @@ export const workspaceFileAccessor: FileAccessor = {
 class InlineDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
 
 	createDebugAdapterDescriptor(_session: vscode.DebugSession): ProviderResult<vscode.DebugAdapterDescriptor> {
-		return new vscode.DebugAdapterInlineImplementation(new MockDebugSession(workspaceFileAccessor));
+		return new vscode.DebugAdapterInlineImplementation(new ImartDebugSession());
 	}
 }

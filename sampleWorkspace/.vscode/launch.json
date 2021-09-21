@@ -5,12 +5,13 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"type": "mock",
-			"request": "launch",
-			"name": "Debug readme.md",
-			"program": "${workspaceFolder}/readme.md",
-			"stopOnEntry": true,
-			"trace": false
+			"type": "imart",
+			"request": "attach",
+			"name": "Debug Imart",
+			"program": "xx",
+			"trace": true,
+			"localRoot": "${workspaceFolder}/src/main/jssp",
+			"port": 9000,
 		}
 	]
 }

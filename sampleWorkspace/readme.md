@@ -1,6 +1,6 @@
-# VS Code Mock Debug
+# VS Code Imart Debug
 
-Mock Debug allows to "debug" markdown files (like this).
+Imart Debug allows to "debug" markdown files (like this).
 The text of the markdown is considered the "program to debug" and certain keywords trigger specific functionality (Yes, this language is not "Turing Complete" :-)
 
 ## Running or Debugging
@@ -30,8 +30,8 @@ In addition a variable's value is shown when hovering over a variable and VS Cod
 
 ## Breakpoints
 
-Breakpoints can be set in the breakpoint margin of the editor (even before a Mock Debug session was started).
-If a Mock Debug session is active, breakpoints are "validated" according to these rules:
+Breakpoints can be set in the breakpoint margin of the editor (even before a Imart Debug session was started).
+If a Imart Debug session is active, breakpoints are "validated" according to these rules:
 
 * if a line is empty or starts with `+` we don't allow to set a breakpoint but move the breakpoint down
 * if a line starts with `-` we don't allow to set a breakpoint but move the breakpoint up
