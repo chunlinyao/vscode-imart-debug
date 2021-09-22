@@ -519,7 +519,7 @@ export class ImartDebugSession extends LoggingDebugSession {
 	}
 	private _getLocalRelativePath(path: string): string {
 		if(this._localRoot) {
-			return makeRelative2(this._localRoot, path);
+			return makeRelative2(path_normalize(this._localRoot), path);
 		}
 		return path;
 	}
@@ -1281,8 +1281,8 @@ export class ImartDebugSession extends LoggingDebugSession {
  */
 function makeRelative2(from: string, to: string): string {
 
-	from = normalize(from);
-	to = normalize(to);
+	from = path_normalize(from);
+	to = path_normalize(to);
 
 	const froms = from.substr(1).split('/');
 	const tos = to.substr(1).split('/');
@@ -1311,7 +1311,7 @@ function path_normalize(p: string) : string {
 
 	p = p.replace(/\\/g, '/');
 	if (/^[a-zA-Z]\:\//.test(p)) {
-		p = '/' + p;
+		p = '/' + p[0].toUpperCase() + p.substr(1);
 	}
 	p = normalize(p);	// use node's normalize to remove '<dir>/..' etc.
 	p = p.replace(/\\/g, '/');
