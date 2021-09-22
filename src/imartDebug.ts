@@ -830,11 +830,14 @@ export class ImartDebugSession extends LoggingDebugSession {
 		}
 		this.sendErrorResponse(response, 2026, "Could not retrieve content.");
 	}
-
+	
 	private _createSource(script: Script): Source {
 		let relPath = this._getRemoteRelativePath(script ? script.location: '');
 		let localPath = path_join(this._localRoot || '', relPath);
 		let sourceReference : number|undefined = undefined;
+		if (process.platform === 'win32') {	// local is Windows
+			localPath = toWindows(localPath);
+		}
 		if (!FS.existsSync(localPath)) {
 			sourceReference = script.scriptId;
 		}
@@ -1331,4 +1334,12 @@ function path_join(absPath: string, relPath: string) : string {
 	absPath = path_normalize(absPath);
 	absPath = absPath.replace(/\\/g, '/');
 	return absPath;
+}
+
+function toWindows(path: string) : string {
+	if (/^\/[a-zA-Z]\:\//.test(path)) {
+		path = path.substr(1);
+	}
+	path = path.replace(/\//g, '\\');
+	return path;
 }
