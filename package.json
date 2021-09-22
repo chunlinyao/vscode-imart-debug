@@ -1,7 +1,7 @@
 {
   "name": "imart-debug",
   "displayName": "Imart Debug",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "publisher": "chunlinyao",
   "description": "Intra-mart debugger for VS Code.",
   "author": {
@@ -122,7 +122,13 @@
               "trace": {
                 "type": "boolean",
                 "description": "Enable logging of the Debug Adapter Protocol.",
-                "default": true
+                "default": false
+              },
+              "localRoot": {
+                "type": "string",
+                "description": "local debug root",
+                "default": "${workspaceFolder}/src/main/jssp",
+                "require": true
               },
               "compileError": {
                 "type": "string",
