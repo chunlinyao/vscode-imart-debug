@@ -6,6 +6,7 @@
   "description": "Intra-mart debugger for VS Code.",
   "author": {
     "name": "Yao Chunlin",
+    "url": "https://github.com/chunlinyao/vscode-imart-debug.git",
     "email": "chunlinyao@gmail.com"
   },
   "license": "MIT",
@@ -15,20 +16,20 @@
   "engines": {
     "vscode": "^1.59.0"
   },
-  "icon": "images/imart-debug-icon.png",
+  "icon": "images/imart-debug-icon.jpg",
   "categories": [
     "Debuggers"
   ],
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/Microsoft/vscode-imart-debug.git"
+    "url": "https://github.com/chunlinyao/vscode-imart-debug.git"
   },
   "bugs": {
-    "url": "https://github.com/Microsoft/vscode-imart-debug/issues"
+    "url": "https://github.com/chunlinyao/vscode-imart-debug/issues"
   },
   "scripts": {
-    "vscode:prepublish": "yarn run package-ext && yarn run package-web",
+    "vscode:prepublish": "yarn run package-ext",
     "compile": "tsc -p ./",
     "lint": "eslint src --ext ts",
     "watch": "webpack --watch --devtool nosources-source-map --info-verbosity verbose --config ./build/extension.webpack.config.js",
@@ -37,10 +38,7 @@
     "test": "node ./out/test/runTest.js",
     "package": "vsce package",
     "publish": "vsce publish",
-    "package-ext": "webpack --mode production --config ./build/extension.webpack.config.js",
-    "compile-web": "webpack --devtool nosources-source-map --config ./build/web-extension.webpack.config.js",
-    "watch-web": "webpack --watch --devtool nosources-source-map --info-verbosity verbose --config ./build/web-extension.webpack.config.js",
-    "package-web": "webpack --mode production --config ./build/web-extension.webpack.config.js"
+    "package-ext": "webpack --mode production --config ./build/extension.webpack.config.js"
   },
   "dependencies": {
     "await-notify": "1.0.1",
@@ -64,7 +62,6 @@
     "webpack-cli": "^3.3.12"
   },
   "main": "./dist/ext/extension.js",
-  "browser": "./dist/web/extension.js",
   "activationEvents": [
     "onDebugResolve:imart",
     "onDebugDynamicConfigurations:imart",
@@ -88,13 +85,8 @@
           "command": "extension.imart-debug.debugEditorContents",
           "when": "resourceLangId == javascript"
         }
-      ],
-      "debug/variables/context": [
-        {
-          "command": "extension.imart-debug.toggleFormatting",
-          "when": "debugType == 'imart' && debugProtocolVariableMenuContext == 'simple'"
-        }
       ]
+      
     },
     "commands": [
       {
@@ -110,10 +102,6 @@
         "category": "Imart Debug",
         "enablement": "!inDebugMode",
         "icon": "$(play)"
-      },
-      {
-        "command": "extension.imart-debug.toggleFormatting",
-        "title": "Toggle between decimal and hex formatting"
       }
     ],
     "breakpoints": [
@@ -131,11 +119,6 @@
         "configurationAttributes": {
           "launch": {
             "properties": {
-              "stopOnEntry": {
-                "type": "boolean",
-                "description": "Automatically stop after launch.",
-                "default": true
-              },
               "trace": {
                 "type": "boolean",
                 "description": "Enable logging of the Debug Adapter Protocol.",
@@ -161,10 +144,10 @@
         "initialConfigurations": [
           {
             "type": "imart",
-            "request": "launch",
-            "name": "Ask for file name",
-            "program": "${workspaceFolder}/${command:AskForProgramName}",
-            "stopOnEntry": true
+            "request": "attach",
+            "port": 9000,
+            "localRoot": "${workspaceFolder}/src/main/jssp",
+            "name": "Debug Imart"
           }
         ],
         "configurationSnippets": [
@@ -173,16 +156,13 @@
             "description": "A new configuration for 'debugging' intramart",
             "body": {
               "type": "imart",
-              "request": "launch",
-              "name": "Ask for file name",
-              "program": "^\"\\${workspaceFolder}/\\${command:AskForProgramName}\"",
-              "stopOnEntry": true
+              "request": "attach",
+              "name": "Debug Imart",
+              "port": 9000,
+              "localRoot": "${workspaceFolder}/src/main/jssp"
             }
           }
-        ],
-        "variables": {
-          "AskForProgramName": "extension.imart-debug.getProgramName"
-        }
+        ]
       }
     ]
   }

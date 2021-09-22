@@ -81,7 +81,7 @@ suite('Node Debug Adapter', () => {
 
 			return Promise.all([
 				dc.configurationSequence(),
-				dc.launch({ program: PROGRAM, stopOnEntry: true }),
+				dc.launch({ program: PROGRAM}),
 				dc.assertStoppedLocation('entry', { line: ENTRY_LINE } )
 			]);
 		});

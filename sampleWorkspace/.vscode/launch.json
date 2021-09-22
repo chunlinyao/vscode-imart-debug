@@ -8,7 +8,6 @@
 			"type": "imart",
 			"request": "attach",
 			"name": "Debug Imart",
-			"program": "xx",
 			"trace": true,
 			"localRoot": "${workspaceFolder}/src/main/jssp",
 			"port": 9000,

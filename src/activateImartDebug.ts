@@ -12,22 +12,7 @@ import { FileAccessor } from './imartRuntime';
 export function activateImartDebug(context: vscode.ExtensionContext, factory?: vscode.DebugAdapterDescriptorFactory) {
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('extension.imart-debug.runEditorContents', (resource: vscode.Uri) => {
-			let targetResource = resource;
-			if (!targetResource && vscode.window.activeTextEditor) {
-				targetResource = vscode.window.activeTextEditor.document.uri;
-			}
-			if (targetResource) {
-				vscode.debug.startDebugging(undefined, {
-						type: 'imart',
-						name: 'Run File',
-						request: 'launch',
-						program: targetResource.fsPath
-					},
-					{ noDebug: true }
-				);
-			}
-		}),
+		
 		vscode.commands.registerCommand('extension.imart-debug.debugEditorContents', (resource: vscode.Uri) => {
 			let targetResource = resource;
 			if (!targetResource && vscode.window.activeTextEditor) {
@@ -36,10 +21,10 @@ export function activateImartDebug(context: vscode.ExtensionContext, factory?: v
 			if (targetResource) {
 				vscode.debug.startDebugging(undefined, {
 					type: 'imart',
-					name: 'Debug File',
-					request: 'launch',
-					program: targetResource.fsPath,
-					stopOnEntry: true
+					name: 'Debug Imart',
+					request: 'attach',
+					localRoot: "${workspaceFolder}/src/main/jssp",
+					port: 9000
 				});
 			}
 		})
@@ -54,21 +39,11 @@ export function activateImartDebug(context: vscode.ExtensionContext, factory?: v
 		provideDebugConfigurations(folder: WorkspaceFolder | undefined): ProviderResult<DebugConfiguration[]> {
 			return [
 				{
-					name: "Dynamic Launch",
-					request: "launch",
+					name: "Imart debug",
+					request: "attach",
 					type: "imart",
-					program: "${file}"
-				},
-				{
-					name: "Another Dynamic Launch",
-					request: "launch",
-					type: "imart",
-					program: "${file}"
-				},
-				{
-					name: "Imart Launch",
-					request: "launch",
-					type: "imart",
+					port: 9000,
+					localRoot: "${workspaceFolder}/src/main/jssp",
 					program: "${file}"
 				}
 			];
@@ -83,58 +58,38 @@ export function activateImartDebug(context: vscode.ExtensionContext, factory?: v
 		context.subscriptions.push(factory);
 	}
 
-	// override VS Code's default implementation of the debug hover
-	// here we match only Imart "variables", that are words starting with an
-	context.subscriptions.push(vscode.languages.registerEvaluatableExpressionProvider('markdown', {
-		provideEvaluatableExpression(document: vscode.TextDocument, position: vscode.Position): vscode.ProviderResult<vscode.EvaluatableExpression> {
+	// // override VS Code's default implementation of the "inline values" feature"
+	// context.subscriptions.push(vscode.languages.registerInlineValuesProvider('javascript', {
 
-			const VARIABLE_REGEXP = /\$[a-z][a-z0-9]*/ig;
-			const line = document.lineAt(position.line).text;
-			
-			let m: RegExpExecArray | null;
-			while (m = VARIABLE_REGEXP.exec(line)) {
-				const varRange = new vscode.Range(position.line, m.index, position.line, m.index + m[0].length);
+	// 	provideInlineValues(document: vscode.TextDocument, viewport: vscode.Range, context: vscode.InlineValueContext) : vscode.ProviderResult<vscode.InlineValue[]> {
 
-				if (varRange.contains(position)) {
-					return new vscode.EvaluatableExpression(varRange);
-				}
-			}
-			return undefined;
-		}
-	}));
+	// 		const allValues: vscode.InlineValue[] = [];
 
-	// override VS Code's default implementation of the "inline values" feature"
-	context.subscriptions.push(vscode.languages.registerInlineValuesProvider('markdown', {
+	// 		for (let l = viewport.start.line; l <= context.stoppedLocation.end.line; l++) {
+	// 			const line = document.lineAt(l);
+	// 			var regExp = /([a-z][a-z0-9_]*)[^.\(]/ig;	// variables are words starting with '$'
+	// 			do {
+	// 				var m = regExp.exec(line.text);
+	// 				if (m) {
+	// 					const varName = m[1];
+	// 					const varRange = new vscode.Range(l, m.index, l, m.index + varName.length);
+	// 					// some literal text
+	// 					//allValues.push(new vscode.InlineValueText(varRange, `${varName}: ${viewport.start.line}`));
 
-		provideInlineValues(document: vscode.TextDocument, viewport: vscode.Range, context: vscode.InlineValueContext) : vscode.ProviderResult<vscode.InlineValue[]> {
+	// 					// value found via variable lookup
+	// 					allValues.push(new vscode.InlineValueVariableLookup(varRange, varName, true));
 
-			const allValues: vscode.InlineValue[] = [];
+	// 					// value determined via expression evaluation
+	// 					//allValues.push(new vscode.InlineValueEvaluatableExpression(varRange, varName));
+	// 				}
+	// 			} while (m);
+	// 		}
 
-			for (let l = viewport.start.line; l <= context.stoppedLocation.end.line; l++) {
-				const line = document.lineAt(l);
-				var regExp = /\$([a-z][a-z0-9]*)/ig;	// variables are words starting with '$'
-				do {
-					var m = regExp.exec(line.text);
-					if (m) {
-						const varName = m[1];
-						const varRange = new vscode.Range(l, m.index, l, m.index + varName.length);
-
-						// some literal text
-						//allValues.push(new vscode.InlineValueText(varRange, `${varName}: ${viewport.start.line}`));
-
-						// value found via variable lookup
-						allValues.push(new vscode.InlineValueVariableLookup(varRange, varName, false));
-
-						// value determined via expression evaluation
-						//allValues.push(new vscode.InlineValueEvaluatableExpression(varRange, varName));
-					}
-				} while (m);
-			}
-
-			return allValues;
-		}
-	}));
+	// 		return allValues;
+	// 	}
+	// }));
 }
+
 
 class ImartConfigurationProvider implements vscode.DebugConfigurationProvider {
 
@@ -147,21 +102,14 @@ class ImartConfigurationProvider implements vscode.DebugConfigurationProvider {
 		// if launch.json is missing or empty
 		if (!config.type && !config.request && !config.name) {
 			const editor = vscode.window.activeTextEditor;
-			if (editor && editor.document.languageId === 'markdown') {
+			if (editor && editor.document.languageId === 'javascript') {
 				config.type = 'imart';
-				config.name = 'Launch';
-				config.request = 'launch';
-				config.program = '${file}';
-				config.stopOnEntry = true;
+				config.name = 'Imart Debug';
+				config.request = 'attach';
+				config.port = 9000;
+				config.localRoot = "${workspaceFolder}/src/main/jssp";
 			}
 		}
-
-		if (!config.program) {
-			return vscode.window.showInformationMessage("Cannot find a program to debug").then(_ => {
-				return undefined;	// abort launch
-			});
-		}
-
 		return config;
 	}
 }
@@ -189,6 +137,6 @@ export const workspaceFileAccessor: FileAccessor = {
 class InlineDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
 
 	createDebugAdapterDescriptor(_session: vscode.DebugSession): ProviderResult<vscode.DebugAdapterDescriptor> {
-		return new vscode.DebugAdapterInlineImplementation(new ImartDebugSession());
+		return new vscode.DebugAdapterInlineImplementation(new ImartDebugSession(workspaceFileAccessor));
 	}
 }

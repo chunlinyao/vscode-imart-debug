@@ -11,15 +11,15 @@ import {
 	Thread, StackFrame, Scope, Source, Handles, Breakpoint, ErrorDestination, Variable
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { basename } from 'path';
+import { basename, normalize } from 'path';
 import { Subject } from 'await-notify';
 import { Transform, TransformCallback } from 'stream';
 import { createConnection, Socket } from 'net';
-import * as PathUtils from './pathUtilities';
 import {StringDecoder} from 'string_decoder';
 import * as URL from 'url';
 import * as FS from 'fs';
 import * as vscode from 'vscode';
+import { FileAccessor } from './imartRuntime';
 
 interface CommonArguments {
 	/**
@@ -47,10 +47,6 @@ interface CommonArguments {
  * The interface should always match this schema.
  */
 interface ILaunchRequestArguments extends CommonArguments, DebugProtocol.LaunchRequestArguments {
-	/** An absolute path to the "program" to debug. */
-	program: string;
-	/** Automatically stop target after launch. If not specified, target does not stop. */
-	stopOnEntry?: boolean;
 	/** run without debugging */
 	noDebug?: boolean;
 	/** if specified, results in a simulated compile error in launch. */
@@ -233,7 +229,6 @@ export class ImartDebugSession extends LoggingDebugSession {
 	private _threads = new Set<number>();
 	private _connection?: Socket;
 	private _requests = new Map<number, PendingResponse>();
-	private _console: ConsoleType = 'internalConsole';
 	private _isTerminated: boolean;
 	private _commonArgs!: CommonArguments;
 	private _argsSubject = new Subject();
@@ -265,7 +260,7 @@ export class ImartDebugSession extends LoggingDebugSession {
 	 * Creates a new debug adapter that is used for one debug session.
 	 * We configure the default implementation of a debug adapter here.
 	 */
-	public constructor() {
+	public constructor(fsAccessor: FileAccessor) {
 		super("imart-debug.txt");
 		this._isTerminated = false;
 		// this debugger uses zero-based lines and columns
@@ -382,7 +377,6 @@ export class ImartDebugSession extends LoggingDebugSession {
 				case 'internalConsole':
 				case 'integratedTerminal':
 				case 'externalTerminal':
-					this._console = args.console;
 					break;
 				default:
 					this.sendErrorResponse(response, 2028, `Unknown console type '${args.console}'.`);
@@ -521,11 +515,11 @@ export class ImartDebugSession extends LoggingDebugSession {
 			// a local file path
 			path = decodeURI(u.path!);
 		}
-		return PathUtils.makeRelative2(this._getRemoteRoot(path), path);
+		return makeRelative2(this._getRemoteRoot(path), path);
 	}
 	private _getLocalRelativePath(path: string): string {
 		if(this._localRoot) {
-			return PathUtils.makeRelative2(this._localRoot, path);
+			return makeRelative2(this._localRoot, path);
 		}
 		return path;
 	}
@@ -819,9 +813,27 @@ export class ImartDebugSession extends LoggingDebugSession {
 		};
 		this.sendResponse(response);
 	}
+
+	protected sourceRequest(response: DebugProtocol.SourceResponse, args: DebugProtocol.SourceArguments): void {
+
+		// first try to use 'source.sourceReference'
+		if (args.source && args.source.sourceReference) {
+			let script = this._scripts.get(args.source.sourceReference);
+			if (script) {		// script content already cached
+				response.body = {
+					content: script.source,
+					mimeType: 'text/javascript'
+				};
+				this.sendResponse(response);
+				return;
+			}
+		}
+		this.sendErrorResponse(response, 2026, "Could not retrieve content.");
+	}
+
 	private _createSource(script: Script): Source {
 		let relPath = this._getRemoteRelativePath(script ? script.location: '');
-		let localPath = PathUtils.join(this._localRoot || '', relPath);
+		let localPath = path_join(this._localRoot || '', relPath);
 		let sourceReference : number|undefined = undefined;
 		if (!FS.existsSync(localPath)) {
 			sourceReference = script.scriptId;
@@ -862,10 +874,20 @@ export class ImartDebugSession extends LoggingDebugSession {
 			let {threadId, frameId} = this._frameHandles.get(variablesContainer.frame);
 
 			let vars = await Promise.all(variablesContainer.properties.map(async p => {
-				let v = this._refCache.get(p.ref) || (await this.sendThreadRequest('lookup', {threadId, frameId, ref: p.ref})).lookup as RhinoVariable;
-				v.frame = variablesContainer.frame;
-				this._refCache.set(p.ref, v);
-				return this.convertFromRuntime(p.name.toString(), v);
+				try {
+					let v = this._refCache.get(p.ref) || (await this.sendThreadRequest('lookup', {threadId, frameId, ref: p.ref})).lookup as RhinoVariable;
+					v.frame = variablesContainer.frame;
+					this._refCache.set(p.ref, v);
+					return this.convertFromRuntime( '' + p.name, v);
+				} catch (e: any) {
+					let dapVariable: DebugProtocol.Variable = {
+						name: '' + p.name,
+						value: e.message,
+						type: 'string',
+						variablesReference: 0,
+					};
+					return dapVariable;
+				}
 			}));
 			response.body = {
 				variables: vars.sort(ImartDebugSession.compareVariableNames)
@@ -960,6 +982,7 @@ export class ImartDebugSession extends LoggingDebugSession {
 					} else {
 						matches = /refresh +(vars)/.exec(args.expression);
 						if (matches && matches.length === 2) {
+							this._refCache.clear();
 							this.sendEvent(new InvalidatedEvent( ['variables']));
 							reply = 'Variables refreshed';
 						}
@@ -996,6 +1019,7 @@ export class ImartDebugSession extends LoggingDebugSession {
 
 		this.sendResponse(response);
 		if (args.context === 'repl' && this._useInvalidatedEvent && /[^!=]=[^!=]/.exec(args.expression)) {
+			this._refCache.clear();
 			this.sendEvent(new InvalidatedEvent( ['variables']));
 		}
 	}
@@ -1050,7 +1074,7 @@ export class ImartDebugSession extends LoggingDebugSession {
 				
 		switch (v.type) {
 			case 'number':
-				dapVariable.value = v.value !== undefined ? v.value.toString() : 'undefined';
+				dapVariable.value = v.value !== undefined && v.value !== null ? v.value.toString() : '' + v.value;
 				dapVariable.type = 'number';
 				break;
 			case 'string':
@@ -1118,6 +1142,10 @@ export class ImartDebugSession extends LoggingDebugSession {
 		this._threads.clear();
 	}
 
+	protected disconnectRequest(response: DebugProtocol.DisconnectResponse, args: DebugProtocol.DisconnectArguments): void {
+		this._terminated("disconnected");
+		this.sendResponse(response);
+	}
 	protected async terminateRequest(response: DebugProtocol.TerminateResponse, args: DebugProtocol.TerminateArguments, request?: DebugProtocol.Request) {
 		this._terminated("stopped");
 		this.sendResponse(response);
@@ -1132,11 +1160,9 @@ export class ImartDebugSession extends LoggingDebugSession {
 
 		let json = JSON.stringify(envelope);
 
-		let jsonBuffer = Buffer.from(json);
-		// length prefix is 8 hex followed by newline = 012345678\n
-		// not efficient, but protocol is then human readable.
-		// json = 1 line json + new line
-		let messageLength = jsonBuffer.byteLength;
+		let jsonBuffer = Buffer.from(json, 'utf8');
+
+		let messageLength = json.length;
 		let length = messageLength.toString(10);
 		let lengthBuffer = Buffer.from(length);
 		let crlf = Buffer.from(CRLF);
@@ -1165,49 +1191,49 @@ export class ImartDebugSession extends LoggingDebugSession {
 		});
 	}
 
-	/**
-	 * Tries to map a (local) VSCode path to a corresponding path on a remote host (where node is running).
-	 * The remote host might use a different OS so we have to make sure to create correct file paths.
-	 */
-	private _localToRemote(localPath: string) : string {
-		if (this._remoteRoot && this._localRoot) {
+	// /**
+	//  * Tries to map a (local) VSCode path to a corresponding path on a remote host (where node is running).
+	//  * The remote host might use a different OS so we have to make sure to create correct file paths.
+	//  */
+	// private _localToRemote(localPath: string) : string {
+	// 	if (this._remoteRoot && this._localRoot) {
 
-			let relPath = PathUtils.makeRelative2(this._localRoot, localPath);
-			let remotePath = PathUtils.join(this._remoteRoot, relPath);
+	// 		let relPath = PathUtils.makeRelative2(this._localRoot, localPath);
+	// 		let remotePath = PathUtils.join(this._remoteRoot, relPath);
 
-			if (/^[a-zA-Z]:[\/\\]/.test(this._remoteRoot)) {	// Windows
-				remotePath = PathUtils.toWindows(remotePath);
-			}
+	// 		if (/^[a-zA-Z]:[\/\\]/.test(this._remoteRoot)) {	// Windows
+	// 			remotePath = PathUtils.toWindows(remotePath);
+	// 		}
 
-			this.log(`_localToRemote: ${localPath} -> ${remotePath}`);
+	// 		this.log(`_localToRemote: ${localPath} -> ${remotePath}`);
 
-			return remotePath;
-		} else {
-			return localPath;
-		}
-	}
+	// 		return remotePath;
+	// 	} else {
+	// 		return localPath;
+	// 	}
+	// }
 
-	/**
-	 * Tries to map a path from the remote host (where node is running) to a corresponding local path.
-	 * The remote host might use a different OS so we have to make sure to create correct file paths.
-	 */
-	private _remoteToLocal(remotePath: string) : string {
-		if (this._remoteRoot && this._localRoot) {
+	// /**
+	//  * Tries to map a path from the remote host (where node is running) to a corresponding local path.
+	//  * The remote host might use a different OS so we have to make sure to create correct file paths.
+	//  */
+	// private _remoteToLocal(remotePath: string) : string {
+	// 	if (this._remoteRoot && this._localRoot) {
 
-			let relPath = PathUtils.makeRelative2(this._remoteRoot, remotePath);
-			let localPath = PathUtils.join(this._localRoot, relPath);
+	// 		let relPath = PathUtils.makeRelative2(this._remoteRoot, remotePath);
+	// 		let localPath = PathUtils.join(this._localRoot, relPath);
 
-			if (process.platform === 'win32') {	// local is Windows
-				localPath = PathUtils.toWindows(localPath);
-			}
+	// 		if (process.platform === 'win32') {	// local is Windows
+	// 			localPath = PathUtils.toWindows(localPath);
+	// 		}
 
-			this.log(`_remoteToLocal: ${remotePath} -> ${localPath}`);
+	// 		this.log(`_remoteToLocal: ${remotePath} -> ${localPath}`);
 
-			return localPath;
-		} else {
-			return remotePath;
-		}
-	}
+	// 		return localPath;
+	// 	} else {
+	// 		return remotePath;
+	// 	}
+	// }
 
 
 	private static compareVariableNames(v1: Variable, v2: Variable): number {
@@ -1248,4 +1274,61 @@ export class ImartDebugSession extends LoggingDebugSession {
 		}
 		return s;
 	}
+}
+
+/**
+ * Return the relative path between 'from' and 'to'.
+ */
+function makeRelative2(from: string, to: string): string {
+
+	from = normalize(from);
+	to = normalize(to);
+
+	const froms = from.substr(1).split('/');
+	const tos = to.substr(1).split('/');
+
+	while (froms.length > 0 && tos.length > 0 && froms[0] === tos[0]) {
+		froms.shift();
+		tos.shift();
+	}
+
+	let l = froms.length - tos.length;
+	if (l === 0) {
+		l = tos.length - 1;
+	}
+
+	while (l > 0) {
+		tos.unshift('..');
+		l--;
+	}
+	return tos.join('/');
+}
+/**
+ * Convert the given Windows or Unix-style path into a normalized path that only uses forward slashes and has all superflous '..' sequences removed.
+ * If the path starts with a Windows-style drive letter, a '/' is prepended.
+ */
+function path_normalize(p: string) : string {
+
+	p = p.replace(/\\/g, '/');
+	if (/^[a-zA-Z]\:\//.test(p)) {
+		p = '/' + p;
+	}
+	p = normalize(p);	// use node's normalize to remove '<dir>/..' etc.
+	p = p.replace(/\\/g, '/');
+	return p;
+}
+/**
+ * Append the given relative path to the absolute path and normalize the result.
+ */
+function path_join(absPath: string, relPath: string) : string {
+	absPath = path_normalize(absPath);
+	relPath = path_normalize(relPath);
+	if (absPath.charAt(absPath.length-1) === '/') {
+		absPath = absPath + relPath;
+	} else {
+		absPath = absPath + '/' + relPath;
+	}
+	absPath = path_normalize(absPath);
+	absPath = absPath.replace(/\\/g, '/');
+	return absPath;
 }
