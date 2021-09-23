@@ -130,6 +130,11 @@
                 "default": "${workspaceFolder}/src/main/jssp",
                 "require": true
               },
+              "hack": {
+                "type": "boolean",
+                "description": "Let Imart keep previouse step when loaded script. imart bugfix hack",
+                "default": false
+              },
               "compileError": {
                 "type": "string",
                 "description": "Simulates a compile error in 'launch' request.",
@@ -153,7 +158,8 @@
             "request": "attach",
             "port": 9000,
             "localRoot": "${workspaceFolder}/src/main/jssp",
-            "name": "Debug Imart"
+            "name": "Debug Imart",
+            "hack": false
           }
         ],
         "configurationSnippets": [
@@ -165,7 +171,8 @@
               "request": "attach",
               "name": "Debug Imart",
               "port": 9000,
-              "localRoot": "${workspaceFolder}/src/main/jssp"
+              "localRoot": "${workspaceFolder}/src/main/jssp",
+              "hack": false
             }
           }
         ]

@@ -38,6 +38,7 @@ interface CommonArguments {
 	console?: ConsoleType;
 	/** enable logging the Debug Adapter Protocol */
 	trace?: boolean;
+	hack?: boolean;
 }
 
 /**
@@ -286,7 +287,6 @@ export class ImartDebugSession extends LoggingDebugSession {
 
 		// make VS Code use 'evaluate' when hovering over source
 		response.body.supportsEvaluateForHovers = true;
-
 		// make VS Code support completion in REPL
 		response.body.supportsCompletionsRequest = true;
 		response.body.completionTriggerCharacters = [ ".", "[" ];
@@ -455,8 +455,10 @@ export class ImartDebugSession extends LoggingDebugSession {
 				return s;
 			}).then(async s => {
 				await this._setPendingBreakpoint(s);
+				let step = ((await this.getArguments()).hack || event.body.supportPrev) ? 'prev' : null;
 				this.sendThreadRequest('continue', {
 					threadId: event.body.threadId,
+					step
 				});
 			});
 		} else if (event.event === "exception") {
@@ -903,6 +905,11 @@ export class ImartDebugSession extends LoggingDebugSession {
 			};
 			this.sendResponse(response);
 		}
+	}
+
+	protected pauseRequest(response: DebugProtocol.PauseResponse, args: DebugProtocol.PauseArguments, request?: DebugProtocol.Request): void {
+   	this.sendThreadRequest('suspend', {threadId: args.threadId});
+		this.sendResponse(response);
 	}
 
 	protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
