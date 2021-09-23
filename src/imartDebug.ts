@@ -287,7 +287,6 @@ export class ImartDebugSession extends LoggingDebugSession {
 
 		// make VS Code use 'evaluate' when hovering over source
 		response.body.supportsEvaluateForHovers = true;
-
 		// make VS Code support completion in REPL
 		response.body.supportsCompletionsRequest = true;
 		response.body.completionTriggerCharacters = [ ".", "[" ];
@@ -906,6 +905,11 @@ export class ImartDebugSession extends LoggingDebugSession {
 			};
 			this.sendResponse(response);
 		}
+	}
+
+	protected pauseRequest(response: DebugProtocol.PauseResponse, args: DebugProtocol.PauseArguments, request?: DebugProtocol.Request): void {
+   	this.sendThreadRequest('suspend', {threadId: args.threadId});
+		this.sendResponse(response);
 	}
 
 	protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
