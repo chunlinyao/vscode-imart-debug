@@ -24,7 +24,8 @@ export function activateImartDebug(context: vscode.ExtensionContext, factory?: v
 					name: 'Debug Imart',
 					request: 'attach',
 					localRoot: "${workspaceFolder}/src/main/jssp",
-					port: 9000
+					port: 9000,
+					hack: false
 				});
 			}
 		})
@@ -44,7 +45,8 @@ export function activateImartDebug(context: vscode.ExtensionContext, factory?: v
 					type: "imart",
 					port: 9000,
 					localRoot: "${workspaceFolder}/src/main/jssp",
-					program: "${file}"
+					program: "${file}",
+					hack: false
 				}
 			];
 		}
@@ -108,6 +110,7 @@ class ImartConfigurationProvider implements vscode.DebugConfigurationProvider {
 				config.request = 'attach';
 				config.port = 9000;
 				config.localRoot = "${workspaceFolder}/src/main/jssp";
+				config.hack = false;
 			}
 		}
 		return config;

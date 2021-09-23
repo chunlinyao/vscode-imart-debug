@@ -38,6 +38,7 @@ interface CommonArguments {
 	console?: ConsoleType;
 	/** enable logging the Debug Adapter Protocol */
 	trace?: boolean;
+	hack?: boolean;
 }
 
 /**
@@ -455,8 +456,10 @@ export class ImartDebugSession extends LoggingDebugSession {
 				return s;
 			}).then(async s => {
 				await this._setPendingBreakpoint(s);
+				let step = ((await this.getArguments()).hack || event.body.supportPrev) ? 'prev' : null;
 				this.sendThreadRequest('continue', {
 					threadId: event.body.threadId,
+					step
 				});
 			});
 		} else if (event.event === "exception") {
