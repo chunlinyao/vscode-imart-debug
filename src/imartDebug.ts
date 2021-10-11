@@ -1125,12 +1125,13 @@ export class ImartDebugSession extends LoggingDebugSession {
 		this.sendEvent(new OutputEvent(message + '\n', 'console'));
 	}
 
-	private _terminated(reason: string): void {
+	private async _terminated(reason: string) {
 		this.log(`Debug Session Ended: ${reason}`);
 		if (this._connection) {
 			let clear: Array<Promise<any>> = [];
-			this._breakpoints.forEach((v, k) => {
-				clear.concat(v.map(bp => this.sendThreadRequest('clearbreakpoint', {breakpointId : bp.breakpointId}).catch(() => {})));
+			let breakpoints: Array<Number> = (await this.sendThreadRequest('breakpoints', {})).breakpoints;
+			breakpoints.forEach( b=> {
+				clear.push(this.sendThreadRequest('clearbreakpoint', {breakpointId :b}).catch(() => {}));
 			});
 			Promise.all(clear).then(() => 
 				this.sendThreadRequest('continue', {}).catch(() => {})

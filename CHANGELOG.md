@@ -1,3 +1,8 @@
+
+## 0.0.5
+* When disconnect clear all breakpoints on the server.
+## 0.0.4
+* Add hack method workaround imart bug.
 ## 0.0.3
 * Fix windows path not exists bug. cause readonly buffer.
 ## 0.0.2
