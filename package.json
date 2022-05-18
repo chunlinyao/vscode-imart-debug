@@ -1,7 +1,7 @@
 {
   "name": "imart-debug",
   "displayName": "Imart Debug",
-  "version": "0.0.5",
+  "version": "0.0.7",
   "publisher": "chunlinyao",
   "description": "Intra-mart debugger for VS Code.",
   "author": {

@@ -460,7 +460,14 @@ export class ImartDebugSession extends LoggingDebugSession {
 					threadId: event.body.threadId,
 					step
 				});
-			});
+			}, async () => {
+				let step = ((await this.getArguments()).hack || event.body.supportPrev) ? 'prev' : null;
+				this.sendThreadRequest('continue', {
+					threadId: event.body.threadId,
+					step
+				});
+			}
+			);
 		} else if (event.event === "exception") {
 			let message = event.body.message;
 			this._exception = event.body;
@@ -517,7 +524,7 @@ export class ImartDebugSession extends LoggingDebugSession {
 			// a local file path
 			path = decodeURI(u.path!);
 		}
-		return makeRelative2(this._getRemoteRoot(path), path);
+		return makeRelative2(this._getRemoteRoot(path_normalize(path)), path);
 	}
 	private _getLocalRelativePath(path: string): string {
 		if(this._localRoot) {
@@ -862,7 +869,7 @@ export class ImartDebugSession extends LoggingDebugSession {
 			frameId, threadId, ref
 		})).lookup as RhinoVariable;
 		variable.frame = args.frameId;
-
+		this._refCache.clear();
 		this._refCache.set(ref, variable);
 		let varReference = this._variableHandles.create(variable);
 		let scopes = [new Scope("Vars", varReference, false)];
